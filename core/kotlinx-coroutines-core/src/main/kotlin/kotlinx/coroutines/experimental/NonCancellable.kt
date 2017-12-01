@@ -31,7 +31,7 @@ import kotlin.coroutines.experimental.AbstractCoroutineContextElement
  * }
  * ```
  */
-object NonCancellable : AbstractCoroutineContextElement(Job), Job {
+public actual object NonCancellable : AbstractCoroutineContextElement(Job), Job {
     /** Always returns `true`. */
     override val isActive: Boolean  get() = true
 
@@ -69,9 +69,13 @@ object NonCancellable : AbstractCoroutineContextElement(Job), Job {
     /** Always returns `false`. */
     override fun cancel(cause: Throwable?): Boolean = false
 
+    override fun cancel(): Boolean = false
+
     /** Always returns [NonDisposableHandle] and does not do anything. */
     override fun attachChild(child: Job): DisposableHandle = NonDisposableHandle
 
     /** Does not do anything. */
     override fun cancelChildren(cause: Throwable?) {}
+
+    override fun cancelChildren() {}
 }

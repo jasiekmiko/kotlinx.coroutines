@@ -90,11 +90,11 @@ import kotlin.coroutines.experimental.intrinsics.suspendCoroutineOrReturn
  * All functions on this interface and on all interfaces derived from it are **thread-safe** and can
  * be safely invoked from concurrent coroutines without external synchronization.
  */
-public interface Job : CoroutineContext.Element {
+public actual interface Job : CoroutineContext.Element {
     /**
      * Key for [Job] instance in the coroutine context.
      */
-    public companion object Key : CoroutineContext.Key<Job> {
+    actual public companion object Key : CoroutineContext.Key<Job> {
         /**
          * Creates a new job object in _active_ state.
          * It is optionally a child of a [parent] job.
@@ -120,20 +120,20 @@ public interface Job : CoroutineContext.Element {
      * The job that is waiting for its [children][attachChild] to complete is still considered to be active if it
      * was not cancelled.
      */
-    public val isActive: Boolean
+    public actual val isActive: Boolean
 
     /**
      * Returns `true` when this job has completed for any reason. A job that was cancelled and has
      * finished its execution is also considered complete. Job becomes complete only after
      * all its [children][attachChild] complete.
      */
-    public val isCompleted: Boolean
+    public actual val isCompleted: Boolean
 
     /**
      * Returns `true` if this job was [cancelled][cancel]. In the general case, it does not imply that the
      * job has already [completed][isCompleted] (it may still be cancelling whatever it was doing).
      */
-    public val isCancelled: Boolean
+    public actual val isCancelled: Boolean
 
     /**
      * Returns [CancellationException] that signals the completion of this job.
@@ -164,7 +164,7 @@ public interface Job : CoroutineContext.Element {
      * The result `true` if this invocation actually started coroutine or `false`
      * if it was already started or completed.
      */
-    public fun start(): Boolean
+    public actual fun start(): Boolean
 
     /**
      * Cancels this job with an optional cancellation [cause]. The result is `true` if this job was
@@ -177,6 +177,10 @@ public interface Job : CoroutineContext.Element {
      * both the context of cancellation and text description of the reason.
      */
     public fun cancel(cause: Throwable? = null): Boolean
+
+    /** @suppress **Deprecated**: Only to match expected declaration in common code */
+    @Deprecated(message = "Only to match expected declaration in common code", level = DeprecationLevel.HIDDEN)
+    public actual fun cancel(): Boolean
 
     // ------------ parent-child ------------
 
@@ -197,13 +201,17 @@ public interface Job : CoroutineContext.Element {
      * lookup a [Job] instance in the parent context and use this function to attach themselves as a child.
      * They also store a reference to the resulting [DisposableHandle] and dispose a handle when they complete.
      */
-    public fun attachChild(child: Job): DisposableHandle
+    public actual fun attachChild(child: Job): DisposableHandle
 
     /**
      * Cancels all [children][attachChild] jobs of this coroutine with the given [cause]. Unlike [cancel],
      * the state of this job itself is not affected.
      */
     public fun cancelChildren(cause: Throwable? = null)
+
+    /** @suppress **Deprecated**: Only to match expected declaration in common code */
+    @Deprecated(message = "Only to match expected declaration in common code", level = DeprecationLevel.HIDDEN)
+    public actual fun cancelChildren()
 
     // ------------ state waiting ------------
 
@@ -228,7 +236,7 @@ public interface Job : CoroutineContext.Element {
      *
      * There is [cancelAndJoin] function that combines an invocation of [cancel] and `join`.
      */
-    public suspend fun join()
+    public actual suspend fun join()
 
     /**
      * Clause for [select] expression of [join] suspending function that selects when the job is complete.
@@ -239,7 +247,7 @@ public interface Job : CoroutineContext.Element {
     // ------------ low-level state-notification ------------
 
     @Deprecated(message = "For binary compatibility", level = DeprecationLevel.HIDDEN)
-    public fun invokeOnCompletion(handler: CompletionHandler): DisposableHandle
+    public actual fun invokeOnCompletion(handler: CompletionHandler): DisposableHandle
 
     @Deprecated(message = "For binary compatibility", level = DeprecationLevel.HIDDEN)
     public fun invokeOnCompletion(handler: CompletionHandler, onCancelling: Boolean): DisposableHandle
@@ -315,12 +323,12 @@ public fun Job(parent: Job? = null): Job = JobImpl(parent)
  * A handle to an allocated object that can be disposed to make it eligible for garbage collection.
  */
 @Suppress("DEPRECATION") // todo: remove when Job.Registration is removed
-public interface DisposableHandle : Job.Registration {
+public actual interface DisposableHandle : Job.Registration {
     /**
      * Disposes the corresponding object, making it eligible for garbage collection.
      * Repeated invocation of this function has no effect.
      */
-    public fun dispose()
+    public actual fun dispose()
 
     /**
      * Unregisters completion handler.
@@ -332,19 +340,6 @@ public interface DisposableHandle : Job.Registration {
 }
 
 /**
- * Handler for [Job.invokeOnCompletion].
- *
- * Installed handler should not throw any exceptions. If it does, they will get caught,
- * wrapped into [CompletionHandlerException], and rethrown, potentially causing crash of unrelated code.
- *
- * **Note**: This type is a part of internal machinery that supports parent-child hierarchies
- * and allows for implementation of suspending functions that wait on the Job's state.
- * This type should not be used in general application code.
- * Implementations of `CompletionHandler` must be fast and _lock-free_.
- */
-public typealias CompletionHandler = (cause: Throwable?) -> Unit
-
-/**
  * This exception gets thrown if an exception is caught while processing [CompletionHandler] invocation for [Job].
  */
 public class CompletionHandlerException(message: String, cause: Throwable) : RuntimeException(message, cause)
@@ -352,29 +347,7 @@ public class CompletionHandlerException(message: String, cause: Throwable) : Run
 /**
  * Thrown by cancellable suspending functions if the [Job] of the coroutine is cancelled while it is suspending.
  */
-public typealias CancellationException = java.util.concurrent.CancellationException
-
-/**
- * Thrown by cancellable suspending functions if the [Job] of the coroutine is cancelled or completed
- * without cause, or with a cause or exception that is not [CancellationException]
- * (see [Job.getCancellationException]).
- */
-public class JobCancellationException(
-    message: String,
-    cause: Throwable?,
-    /**
-     * The job that was cancelled.
-     */
-    public val job: Job
-) : CancellationException(message) {
-    init { if (cause != null) initCause(cause) }
-    override fun toString(): String = "${super.toString()}; job=$job"
-    override fun equals(other: Any?): Boolean =
-        other === this ||
-            other is JobCancellationException && other.message == message && other.job == job && other.cause == cause
-    override fun hashCode(): Int =
-        (message!!.hashCode() * 31 + job.hashCode()) * 31 + (cause?.hashCode() ?: 0)
-}
+public actual typealias CancellationException = java.util.concurrent.CancellationException
 
 /**
  * Unregisters a specified [registration] when this job is complete.
@@ -903,6 +876,8 @@ public open class JobSupport(active: Boolean) : Job, SelectClause0, SelectClause
             makeCancelling(cause) else
             makeCancelled(cause)
 
+    override fun cancel(): Boolean = cancel(null)
+
     // we will be dispatching coroutine to process its cancellation exception, so there is no need for
     // an extra check for Job status in MODE_CANCELLABLE
     private fun updateStateCancelled(state: Incomplete, cause: Throwable?) =
@@ -1043,6 +1018,8 @@ public open class JobSupport(active: Boolean) : Job, SelectClause0, SelectClause
             is Incomplete -> state.list?.cancelChildrenList(cause)
         }
     }
+
+    override fun cancelChildren() = cancelChildren(null)
 
     private fun NodeList.cancelChildrenList(cause: Throwable?) {
         forEach<Child> { it.childJob.cancel(cause) }
